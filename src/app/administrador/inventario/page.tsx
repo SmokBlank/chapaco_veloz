@@ -30,7 +30,30 @@ export default function InventarioAdmin() {
   const [umbral, setUmbral] = useState(3)
   const supabase = crearCliente()
 
-  useEffect(() => { cargar(); cargarUmbral() }, [])
+  useEffect(() => { 
+    cargar()
+    cargarUmbral()
+
+    // Suscribirse a cambios en tiempo real de la tabla 'inventario'
+    const canalInventario = supabase
+      .channel('cambios-inventario-admin')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'inventario' },
+        (payload) => {
+          setItems((prevItems) =>
+            prevItems.map((item) =>
+              item.id === payload.new.id ? { ...item, stock: payload.new.stock } : item
+            )
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(canalInventario)
+    }
+  }, [])
 
   const cargar = async () => {
     const { data } = await supabase.from('inventario').select('*').order('nombre')

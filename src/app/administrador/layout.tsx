@@ -20,12 +20,14 @@ export default function LayoutAdministrador({ children }: { children: React.Reac
       if (session?.user) {
         const { data: perfil } = await supabase
           .from('perfiles')
-          .select('nombre_completo, avatar_url')
+          .select('nombre_completo')
           .eq('id', session.user.id)
           .single()
+        
         if (perfil) {
           if (perfil.nombre_completo) setAdminName(perfil.nombre_completo)
-          if (perfil.avatar_url) setAvatarUrl(perfil.avatar_url)
+          const meta = session.user.user_metadata || {}
+          if (meta.avatar_url) setAvatarUrl(meta.avatar_url)
         }
       }
     }

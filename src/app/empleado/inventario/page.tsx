@@ -29,10 +29,6 @@ export default function InventarioEmpleado() {
   const [cargando, setCargando] = useState(false)
   const supabase = crearCliente()
 
-  useEffect(() => {
-    cargarInventario()
-  }, [])
-
   const cargarInventario = async () => {
     setCargando(true)
     const { data } = await supabase.from('inventario').select('*').order('nombre')
@@ -40,6 +36,30 @@ export default function InventarioEmpleado() {
     setConteos({})
     setCargando(false)
   }
+
+  useEffect(() => {
+    cargarInventario()
+
+    // Suscribirse a cambios en tiempo real de la tabla 'inventario' para reflejar ventas
+    const canalInventario = supabase
+      .channel('cambios-inventario')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'inventario' },
+        (payload) => {
+          setItems((prevItems) =>
+            prevItems.map((item) =>
+              item.id === payload.new.id ? { ...item, stock: payload.new.stock } : item
+            )
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(canalInventario)
+    }
+  }, [])
 
   const cargarMovimientos = async () => {
     const { data } = await supabase
